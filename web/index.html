@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Afterhours — Private remix studio</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+  <script src="/beat-player.js" defer></script><script src="/mixer.js" defer></script><script src="/app.js" defer></script><script src="/performance.js" defer></script>
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/" aria-label="Afterhours home"><span class="brand-mark">a/</span><span>afterhours<span class="brand-sub">YOUR PRIVATE REMIX STUDIO</span></span></a>
+  <div class="library-heading"><span>YOUR TRACKS</span><span id="track-count">0</span></div>
+  <div id="track-list" class="track-list" aria-label="Your track library"></div>
+  <button id="add-track" class="add-track">＋ Add a track</button>
+  <input type="file" id="file-input" accept=".wav,.mp3,.flac,.m4a,.aiff,.aif,.ogg" hidden>
+  <div id="upload-status" class="upload-status" aria-live="polite" hidden><span id="upload-text"></span><progress id="upload-progress" max="100" value="0"></progress></div>
+  <div class="local-note"><span class="status-dot"></span><div>Only on this Mac<small>No account. No cloud uploads.<br>Your versions are saved here.</small></div></div>
+</aside>
+<main id="drop-area">
+  <header class="topbar"><span class="eyebrow">THE REMIX ROOM</span><span class="private-badge"><span class="status-dot"></span> Private session</span></header>
+  <section class="page-heading"><div><h1>Make it move<span>.</span></h1><p>Your tune. A different shape. Find the version that feels right.</p></div><span class="edition">VOL. 01 <span>↗</span></span></section>
+  <div id="error" role="alert" class="error" hidden></div>
+  <section id="empty-library" class="empty-library" hidden><div class="empty-symbol">↥</div><h2>Start with a track you made.</h2><p>Drop a finished track here, or choose a file.<br>WAV, MP3, FLAC, M4A, AIFF or OGG · up to 200 MB</p><button id="empty-upload" class="primary">Choose a track</button></section>
+  <div id="workspace" hidden>
+    <section class="performance panel" aria-label="Two deck live mixer">
+      <div class="panel-heading"><div><span class="eyebrow">LIVE ROOM / A ↔ B</span><h2>Play it your way.</h2></div><button id="stop-decks" class="secondary">Pause both</button></div>
+      <p class="muted">Start on A. Bring in B. Load your next choice into A while B keeps playing.</p>
+      <div class="mix-settings">
+        <label>Set BPM <input id="set-bpm" type="number" min="70" max="180" step="0.1" value="136"></label><button id="save-set-bpm" class="secondary">Apply BPM</button>
+        <label>Switch on <select id="mix-grid"><option value="1">Next beat</option><option value="4">Next bar (4 beats)</option></select></label>
+        <label><input id="cut-on-launch" type="checkbox" checked> Section buttons cut across</label>
+      </div>
+      <p id="mix-status" role="status" class="mix-status">Add remixes to your crate below, then load A and B.</p>
+      <div id="decks" class="decks"></div>
+      <div class="crossfader"><button id="cut-a" class="secondary">Cut to A</button><label for="crossfader">A <span id="mix-balance">A only</span> B<input id="crossfader" type="range" min="0" max="100" value="0" aria-label="Blend between deck A and deck B"></label><button id="cut-b" class="secondary">Cut to B</button></div>
+      <div class="mix-cancel"><span id="mix-cue" role="status" aria-live="polite"></span><button id="cancel-mix" class="text-button" hidden>Cancel queued switch</button></div>
+      <details class="crate" open><summary>Your set crate <span id="crate-count">0 remixes</span></summary><p class="muted">A loose order, not a playlist. Load any choice into either deck.</p>
+        <div class="crate-add"><select id="crate-choice" aria-label="Choose a saved remix for your crate"></select><button id="crate-add" class="secondary">＋ Add to crate</button></div><div id="crate-list"></div>
+      </details>
+      <p class="small-note">Different tempos are prepared at your set BPM before loading; originals stay untouched. Large tempo changes may alter the texture. These controls mix live playback; they do not record a set. Cueing here means standby loading, not a separate headphone output.</p>
+    </section>
+    <template id="deck-template"><article class="deck"><div class="deck-heading"><strong class="deck-letter"></strong><span class="deck-state">Empty</span></div><h3 class="deck-title">Choose a remix from your crate</h3><p class="deck-meta muted">The other deck keeps playing while you load.</p><div class="deck-choice"><select aria-label="Remix"></select><button class="deck-load secondary">Load</button></div><div class="deck-transport"><button class="deck-play live-play" disabled>Play</button><span class="deck-time live-time">0:00 / 0:00</span><span class="deck-beat beat-readout">— / 4</span></div><progress class="deck-progress" max="1" value="0" aria-label="Playback position"></progress><div class="deck-sections"></div><p class="deck-message muted" role="status"></p><a class="deck-download text-button" hidden download>↓ Set-tempo WAV</a></article></template>
+    <section class="source-card"><div class="track-icon">≋</div><div class="source-title"><span class="eyebrow">YOUR ORIGINAL</span><h2 id="source-name"></h2><p id="source-meta"></p></div><audio id="source-audio" controls preload="metadata" aria-label="Listen to your original track"></audio></section>
+    <section id="analysis-panel" class="analysis-panel" hidden><span class="spinner"></span><p id="analysis-text"></p><button id="retry-analysis" class="secondary" hidden>Try again</button></section>
+    <div class="studio-grid">
+      <section class="controls panel">
+        <div class="panel-heading"><span class="eyebrow">01 / SHAPE YOUR REMIX</span><button id="reset-recipe" class="text-button">Reset recipe ↺</button></div>
+        <h2>Your starting sound</h2><p class="muted">Built from the structural remix you liked.</p>
+        <form id="remix-form">
+          <fieldset><legend>Drum direction</legend><div class="style-picker">
+            <label><input type="radio" name="style" value="broken" checked><span>Broken beat<small>Bouncy &amp; syncopated</small></span></label>
+            <label><input type="radio" name="style" value="techno"><span>Minimal techno<small>Steady &amp; driving</small></span></label>
+            <label><input type="radio" name="style" value="halftime"><span>Half-time<small>Slow-feeling &amp; spacious</small></span></label>
+          </div></fieldset>
+          <div class="slider-control"><label for="change">Amount of change <output id="change-value">Adventurous</output></label><input id="change" type="range" min="0" max="100" value="75"><div class="range-ends"><span>Longer phrases</span><span>Chop it up</span></div></div>
+          <div class="slider-control"><label for="drums">Drum activity <output id="drums-value">Balanced</output></label><input id="drums" type="range" min="0" max="100" value="55"><div class="range-ends"><span>Sparse</span><span>Busy</span></div></div>
+          <div class="slider-control"><label for="melody">Keep the melody <output id="melody-value">Present</output></label><input id="melody" type="range" min="0" max="100" value="60"><div class="range-ends"><span>In the background</span><span>Up front</span></div></div>
+          <div class="select-pair"><label for="breakdown">Breakdown<select id="breakdown"><option value="short">Short</option><option value="roomy" selected>Roomy</option><option value="long">Long</option></select></label><label for="length">Remix length<select id="length"><option value="short">Short cut</option><option value="standard" selected>Standard</option><option value="extended">Extended</option></select></label></div>
+          <details class="tempo-details"><summary>Adjust the rhythm estimate</summary><p>If the new beat feels out of step, you can correct the detected tempo here. This changes the beat grid, not the speed of your recording.</p><label for="bpm">Source tempo (BPM)</label><input type="number" id="bpm" min="70" max="180" step="0.1" placeholder="Automatic"><button id="auto-tempo" class="text-button" type="button">Use automatic</button></details>
+          <button id="generate" class="primary generate" type="submit"><span>Make a remix</span><span>↗</span></button>
+          <p class="generation-note">Every click makes a new variation.<br>Your previous versions stay in the library.</p>
+        </form>
+      </section>
+      <div class="results-column">
+        <section id="working" class="working panel" aria-live="polite" hidden><div><span class="spinner"></span><strong id="working-title">Making your remix</strong><span id="working-percent"></span></div><progress id="working-progress" max="100" value="0"></progress><p id="working-message"></p></section>
+        <section class="result panel" id="result-panel">
+          <div class="panel-heading"><span class="eyebrow">02 / LISTEN &amp; KEEP</span><button id="favorite" class="favorite" aria-label="Favorite this version" aria-pressed="false" hidden>☆</button></div>
+          <div id="no-result" class="no-result"><span class="empty-symbol">↝</span><h2>A new shape for your track.</h2><p>Choose a direction and make your first remix.<br>Your finished version will appear here.</p></div>
+          <div id="result-content" hidden>
+            <div class="result-title"><h2 id="result-name"></h2><span id="approved-label" class="approved" hidden>YOUR STARTING POINT</span></div><p id="result-meta" class="muted"></p>
+            <div class="waveform-wrap"><svg id="waveform" viewBox="0 0 800 120" preserveAspectRatio="none" role="slider" tabindex="0" aria-label="Seek in remix" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></svg></div>
+            <div class="live-transport" aria-label="Live remix player">
+              <button id="remix-play" class="live-play" aria-label="Play remix" disabled>Loading…</button>
+              <span id="remix-time" class="live-time">0:00 / 0:00</span>
+              <span class="beat-readout" aria-label="Current beat"><span id="live-beat">—</span> / 4</span>
+              <label class="live-volume" for="remix-volume">Volume<input id="remix-volume" type="range" min="0" max="100" value="100" aria-label="Remix volume"></label>
+            </div>
+            <div class="listen-options"><label><input id="match-volume" type="checkbox" checked> Match listening volume</label><button id="jump-return" class="text-button">Jump to the return ↗</button></div>
+            <div class="structure-heading"><span class="eyebrow">LIVE SECTIONS · SWITCH ON THE BEAT</span><span id="result-duration"></span></div><div id="sections" class="sections" aria-label="Queue a section on the next beat"></div>
+            <div class="live-cue"><span id="section-cue" role="status" aria-live="polite">Click a section while playing to queue it for the next beat.</span><button id="cancel-cue" class="text-button" hidden>Cancel</button></div>
+            <div class="download-row"><a id="download-wav" class="download-primary" download>↓ Download WAV <small>24-bit</small></a><a id="download-mp3" class="download-secondary" download>↓ MP3</a></div>
+            <p class="small-note">Made from your track with new programmed drums. Separation can leave some rough edges—your ears get the final say.</p>
+          </div>
+        </section>
+        <section class="versions panel"><div class="panel-heading"><span class="eyebrow">YOUR VERSIONS</span><span id="version-count" class="muted">0 saved</span></div><div id="version-list"></div></section>
+        <div class="room-note"><span>✳</span><p>Try a big change first. Then find your favourite details.<br><strong>“More space, less melody, keep that groove.”</strong></p></div>
+      </div>
+    </div>
+  </div>
+  <footer><span>AFTERHOURS / YOUR MUSIC, REWORKED</span><span>Made to listen, compare, and go again.</span></footer>
+</main>
+<div id="toast" class="toast" role="status" hidden></div>
+</body></html>
